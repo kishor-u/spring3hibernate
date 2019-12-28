@@ -191,6 +191,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn:
       - RDS
+      - ECSLoadbalancerStack
     Properties:
       TemplateURL: !Sub https://s3.amazonaws.com/${BucketName}/pipeline.yaml
       Parameters:

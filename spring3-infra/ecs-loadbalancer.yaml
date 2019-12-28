@@ -52,8 +52,7 @@ Mappings: ## Add other ecs optimized AMI ID's if running other than the 4 region
     ap-south-1:
         AMIID: ami-0ce933e2ae91880d3
     us-west-2:
-        AMIID: ami-0c5204531f799e0c6
-        
+        AMIID: ami-0c13873ede4682a27
 Resources:
   ECRRepository:
     Type: "AWS::ECR::Repository"

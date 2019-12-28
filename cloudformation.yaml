@@ -2,37 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: The main goal of this awesome Java Webapp is to encourage people to dive deep in Java Application Architecture
              and how we can make delivery pipeline faster, easier and much reliable using Continous Integration.
 Resources:
-  ScalableTargetRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service: 'application-autoscaling.amazonaws.com'
-          Action: 'sts:AssumeRole'
-      Path: '/'
-      Policies:
-      - PolicyName: ecs
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - 'ecs:DescribeServices'
-            - 'ecs:UpdateService'
-            Resource: '*'
-      - PolicyName: cloudwatch
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - 'cloudwatch:DescribeAlarms'
-            Resource: '*'
-
-# ------ Java - Spring3Hibernate  ------------
+# ------ Java - Spring3Hibernate  WebApp  ------------
 
   TaskDefinitionSpring3Hibernate:
     Type: "AWS::ECS::TaskDefinition"
@@ -70,6 +40,114 @@ Resources:
             Fn::ImportValue: "TAGNAME-Spring3hibernateTG"
       Role: !Sub arn:aws:iam::${AWS::AccountId}:role/ecsServiceRole
       TaskDefinition: !Ref TaskDefinitionSpring3Hibernate
+
+# Scalable Target declaration for service autoscaling
+  ScalableTargetRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'application-autoscaling.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+      - PolicyName: ecs
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'ecs:DescribeServices'
+            - 'ecs:UpdateService'
+            Resource: '*'
+      - PolicyName: cloudwatch
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'cloudwatch:DescribeAlarms'
+            Resource: '*'
+
+  ScalableTargetSpring3Hibernate:
+    Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
+    Properties:
+      MaxCapacity: MAX_TASK
+      MinCapacity: MIN_TASK
+      ResourceId: !Sub
+        - service/TAGNAME-cluster-spring3hibernate/${Service}
+        - Service: !GetAtt ServiceDefinitionSpring3Hibernate.Name
+      RoleARN: !GetAtt 'ScalableTargetRole.Arn'
+      ScalableDimension: 'ecs:service:DesiredCount'
+      ServiceNamespace: ecs
+
+  ScaleUpPolicyCPUSpring3Hibernate:
+    Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
+    Properties:
+      PolicyName: TAGNAME-spring3javawebapp-scale-up-cpu
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref ScalableTargetSpring3Hibernate
+      StepScalingPolicyConfiguration:
+        AdjustmentType: PercentChangeInCapacity
+        Cooldown: 300
+        MinAdjustmentMagnitude: 1
+        StepAdjustments:
+        - MetricIntervalLowerBound: 0
+          ScalingAdjustment: 25
+
+  CPUUtilizationHighAlarmSpring3Hibernate:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Service is running out of CPU'
+      Namespace: 'AWS/ECS'
+      Dimensions:
+      - Name: ClusterName
+        Value: TAGNAME-cluster-spring3hibernate
+      - Name: ServiceName
+        Value: !GetAtt 'ServiceDefinitionSpring3Hibernate.Name'
+      MetricName: CPUUtilization
+      ComparisonOperator: GreaterThanThreshold
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 70
+      AlarmActions:
+      - !Ref ScaleUpPolicyCPUSpring3Hibernate
+
+  ScaleUpPolicyMemorySpring3Hibernate:
+    Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
+    Properties:
+      PolicyName: TAGNAME-spring3javawebapp-scale-up-memory'
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref ScalableTargetSpring3Hibernate
+      StepScalingPolicyConfiguration: 
+        AdjustmentType: PercentChangeInCapacity
+        Cooldown: 300
+        MinAdjustmentMagnitude: 1
+        StepAdjustments:
+        - MetricIntervalLowerBound: 0
+          ScalingAdjustment: 25
+
+  MemoryUtilizationHighAlarmSpring3Hibernate:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: 'Service is running out of memory'
+      Namespace: AWS/ECS
+      Dimensions:
+      - Name: ClusterName
+        Value: TAGNAME-cluster-spring3hibernate
+      - Name: ServiceName
+        Value: !GetAtt 'ServiceDefinitionSpring3Hibernate.Name'
+      MetricName: MemoryUtilization
+      ComparisonOperator: GreaterThanThreshold
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: '1' 
+      Threshold: 70
+      AlarmActions: [!Ref 'ScaleUpPolicyMemorySpring3Hibernate']
 
 Outputs:
   ServiceDefinitionSpring3Hibernate:
