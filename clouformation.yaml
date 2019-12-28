@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: The main goal of this awesome Java Webapp is to encourage people to dive deep in Java Application Architecture
+             and how we can make delivery pipeline faster, easier and much reliable using Continous Integration.
+Resources:
+  ScalableTargetRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'application-autoscaling.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+      - PolicyName: ecs
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'ecs:DescribeServices'
+            - 'ecs:UpdateService'
+            Resource: '*'
+      - PolicyName: cloudwatch
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'cloudwatch:DescribeAlarms'
+            Resource: '*'
+
+# ------ Java - Spring3Hibernate  ------------
+
+  TaskDefinitionSpring3Hibernate:
+    Type: "AWS::ECS::TaskDefinition"
+    Properties:
+      Family: spring3hibernate
+      ContainerDefinitions:
+        - Name: spring3hibernate
+          Essential: true
+          Image: ECR_REPO:IMAGE_TAG
+          Cpu: ECS_CPU
+          Memory: ECS_MEMORY
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: ECSspring3hibernate-TAGNAME
+              awslogs-region:
+                Ref: AWS::Region
+              awslogs-stream-prefix: spring3hibernate
+          PortMappings:
+            - ContainerPort: 8080
+              HostPort: 0
+
+  ServiceDefinitionSpring3Hibernate:
+    Type: "AWS::ECS::Service"
+    Properties:
+      Cluster: TAGNAME-cluster-spring3hibernate
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      DesiredCount: MIN_TASK
+      LoadBalancers:
+        - ContainerName: spring3hibernate
+          ContainerPort: 8080
+          TargetGroupArn:
+            Fn::ImportValue: "TAGNAME-Spring3hibernateTG"
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/ecsServiceRole
+      TaskDefinition: !Ref TaskDefinitionSpring3Hibernate
+
+Outputs:
+  ServiceDefinitionSpring3Hibernate:
+    Description: 'ServiceDefinitionSpring3Hibernate'
+    Value: !GetAtt ServiceDefinitionSpring3Hibernate.Name
+    Export:
+      Name: !Sub 'TAGNAME-ServiceDefinitionSpring3Hibernate'
