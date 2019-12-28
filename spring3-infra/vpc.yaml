@@ -1,0 +1,293 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VPC for Spring3Hibernate Java Application'
+
+Parameters:
+  ServiceID:
+    Description: 'CIDR Block notation for VPC (Class B type) (10.XXX.0.0/16)'
+    Type: Number
+    Default: 0
+    ConstraintDescription: 'Must be in the range [0-255]'
+    MinValue: 0
+    MaxValue: 255
+  ServiceName:
+    Description: 'Service Name'
+    Type: String
+    Default: spring3-java
+    Description: 'The tagname used to identify the resources created for Spring3Hibernate Java Application'
+
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Sub '10.${ServiceID}.0.0/16'
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+      - Key: Name
+        Value: !Sub '${ServiceName}-vpc'
+      - Key: Service
+        Value: !Sub '${ServiceName}'
+
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+      - Key: Name
+        Value: !Sub '${ServiceName}-vpc-ig'
+      - Key: Service
+        Value: !Sub '${ServiceName}'
+
+  VPCGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  SubnetAPublic:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Sub '10.${ServiceID}.10.0/24'
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Sub '${ServiceName}-public-a'
+      - Key: Service
+        Value: !Sub '${ServiceName}'
+      - Key: Reach
+        Value: public
+  SubnetBPublic:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Sub '10.${ServiceID}.11.0/24'
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Sub '${ServiceName}-public-b'
+      - Key: Service
+        Value: !Sub '${ServiceName}'
+      - Key: Reach
+        Value: public
+
+  SubnetAPrivate:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Sub '10.${ServiceID}.14.0/24'
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Sub '${ServiceName}-private-a'
+      - Key: Service
+        Value: !Sub '${ServiceName}'
+      - Key: Reach
+        Value: private
+  SubnetBPrivate:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Sub '10.${ServiceID}.15.0/24'
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Sub '${ServiceName}-private-b'
+      - Key: Service
+        Value: !Sub '${ServiceName}'
+      - Key: Reach
+        Value: private
+
+  RouteTablePublic:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Service
+        Value: !Sub '${ServiceName}'
+      - Key: Name
+        Value: !Sub '${ServiceName}-route-public'
+
+  RouteTablePrivateA:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Service
+        Value: !Sub '${ServiceName}'
+      - Key: Name
+        Value: !Sub '${ServiceName}-route-privateA'
+  RouteTablePrivateB:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Service
+        Value: !Sub '${ServiceName}'
+      - Key: Name
+        Value: !Sub '${ServiceName}-route-privateB'
+
+  ElasticIP1:
+   Type: "AWS::EC2::EIP"
+  NatGatewaySubnetA:
+    Type: "AWS::EC2::NatGateway"
+    Properties:
+      AllocationId: !GetAtt ElasticIP1.AllocationId
+      SubnetId: !Ref SubnetAPublic
+
+  ElasticIP2:
+   Type: "AWS::EC2::EIP"
+  NatGatewaySubnetB:
+    Type: "AWS::EC2::NatGateway"
+    Properties:
+      AllocationId: !GetAtt ElasticIP2.AllocationId
+      SubnetId: !Ref SubnetBPublic
+
+  RouteTableAssociationAPublic:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetAPublic
+      RouteTableId: !Ref RouteTablePublic
+  RouteTableAssociationBPublic:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetBPublic
+      RouteTableId: !Ref RouteTablePublic
+
+  RouteTableAssociationAPrivate:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetAPrivate
+      RouteTableId: !Ref RouteTablePrivateA
+  RouteTableAssociationBPrivate:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetBPrivate
+      RouteTableId: !Ref RouteTablePrivateB
+
+  RouteTablePublicInternetRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+  RouteTablePrivateInternetRoute1:
+    Type: 'AWS::EC2::Route'
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTablePrivateA
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NatGatewaySubnetA
+  RouteTablePrivateInternetRoute2:
+    Type: 'AWS::EC2::Route'
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTablePrivateB
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NatGatewaySubnetB
+
+  PrivateSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Private Security group for the architecture
+      SecurityGroupIngress:
+        - CidrIp:  !Sub 10.${ServiceID}.0.0/16
+          IpProtocol: -1
+          ToPort: -1
+      VpcId: !Ref VPC
+
+  PublicSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Public Security group for the architecture
+      SecurityGroupIngress:
+        - CidrIp: '0.0.0.0/0'
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+        - CidrIp:  '0.0.0.0/0'
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+      VpcId: !Ref VPC
+
+
+Outputs:
+  AZs:
+    Description: 'AZs'
+    Value: 2
+    Export:
+      Name: !Sub '${ServiceName}-AZs'
+  AZA:
+    Description: 'AZ of A'
+    Value: !Select [0, !GetAZs '']
+    Export:
+      Name: !Sub '${ServiceName}-AZA'
+  AZB:
+    Description: 'AZ of B'
+    Value: !Select [1, !GetAZs '']
+    Export:
+      Name: !Sub '${ServiceName}-AZB'
+  VPC:
+    Description: 'VPC.'
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${ServiceName}-VPC'
+  SubnetsPublic:
+    Description: 'Public Subnets'
+    Value: !Join [',', [!Ref SubnetAPublic, !Ref SubnetBPublic]]
+    Export:
+      Name: !Sub '${ServiceName}-SubnetsPublic'
+  SubnetsPrivate:
+    Description: 'Private Subnets'
+    Value: !Join [',', [!Ref SubnetAPrivate, !Ref SubnetBPrivate]]
+    Export:
+      Name: !Sub '${ServiceName}-SubnetsPrivate'
+  NatGatewaySubnetA:
+    Description: NatGateway created for Private Subnet.
+    Value: !Ref NatGatewaySubnetA
+    Export:
+      Name: !Sub '${ServiceName}-NatGatewaySubnetA'
+  NatGatewaySubnetB:
+    Description: NatGateway created for Private Subnet.
+    Value: !Ref NatGatewaySubnetB
+    Export:
+      Name: !Sub '${ServiceName}-NatGatewaySubnetB'
+  SubnetAPublic:
+    Description: 'Subnet A public.'
+    Value: !Ref SubnetAPublic
+    Export:
+      Name: !Sub '${ServiceName}-SubnetAPublic'
+  SubnetAPrivate:
+    Description: 'Subnet A private.'
+    Value: !Ref SubnetAPrivate
+    Export:
+      Name: !Sub '${ServiceName}-SubnetAPrivate'
+  SubnetBPublic:
+    Description: 'Subnet B public.'
+    Value: !Ref SubnetBPublic
+    Export:
+      Name: !Sub '${ServiceName}-SubnetBPublic'
+  SubnetBPrivate:
+    Description: 'Subnet B private.'
+    Value: !Ref SubnetBPrivate
+    Export:
+      Name: !Sub '${ServiceName}-SubnetBPrivate'
+  DefaultVPCSecurityGroup:
+    Description: 'The default security group ID that is associated with the VPC'
+    Value: !GetAtt VPC.DefaultSecurityGroup
+    Export:
+      Name: !Sub '${ServiceName}-DefaultVPCSecurityGroup'
+  PublicSecurityGroup:
+    Description: 'Public Security Group for the architecture'
+    Value: !Ref PublicSecurityGroup
+    Export:
+      Name: !Sub '${ServiceName}-PublicSecurityGroup'
+  PrivateSecurityGroup:
+    Description: 'Public Security Group for the architecture'
+    Value: !Ref PrivateSecurityGroup
+    Export:
+      Name: !Sub '${ServiceName}-PrivateSecurityGroup'

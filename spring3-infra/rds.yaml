@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template creates an Amazon MySQL RDS database instance.
+
+Parameters:
+  ServiceName:
+    Type: String
+    Description: Identification name for rds service in the architecture.
+  AllocatedStorage:
+    Type: String
+    Default: '20'
+    Description: The allocated storage size, specified in gigabytes (GB).
+  DBInstanceClass:
+    Type: String
+    Default: db.t2.micro
+    AllowedValues: [db.m4.large, db.m4.xlarge, db.m4.2xlarge, db.m4.4xlarge, db.m4.10xlarge, db.r3.large, db.r3.xlarge, db.r3.2xlarge, db.r3.4xlarge, db.r3.8xlarge, db.t2.micro, db.t2.small, db.t2.medium, db.t2.large]
+    Description: The name of the compute and memory capacity classes of the DB instance.
+  DBName:
+    Default: employee
+    Description: The database name
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  MasterUsername:
+    Type: String
+    Description: MasterUsername
+  MasterUserPassword:
+    Type: String
+    Description: MasterUserPassword
+  PrivateSubnetAZ1:
+    Description: Private subnet in availability Zone 1
+    Type: String
+  PrivateSubnetAZ2:
+    Description: Private subnet in availability Zone 1
+    Type: String
+  VPCSecurityGroups:
+    Description: VPC Security Group
+    Type: String
+
+Resources:
+  DBSubnetGrp:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: DB Subnet Groups
+      SubnetIds:
+        - !Ref PrivateSubnetAZ1
+        - !Ref PrivateSubnetAZ2
+      Tags:
+      - Key: Name
+        Value: !Sub '${ServiceName}-DBSubnetGroup'
+      - Key: Service
+        Value: !Sub '${ServiceName}'
+
+  MySQLDB:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      AllocatedStorage: !Ref 'AllocatedStorage'
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: false
+      BackupRetentionPeriod: 0
+      DBInstanceClass: !Ref 'DBInstanceClass'
+      DBInstanceIdentifier: !Sub '${ServiceName}-dbinstance-spring3hibernate'
+      DBName: !Ref 'DBName'
+      DBSubnetGroupName: !Ref 'DBSubnetGrp'
+      Engine: MySQL
+      EngineVersion: "5.6.19"
+      MasterUsername: !Ref 'MasterUsername'
+      MasterUserPassword: !Ref 'MasterUserPassword'
+      MultiAZ: false
+      PubliclyAccessible: false
+      StorageEncrypted: false
+      Tags:
+      - Key: Name
+        Value: !Sub ${ServiceName}-MySQLDatabase
+      - Key: Service
+        Value: !Sub '${ServiceName}'
+      VPCSecurityGroups:
+        - !Ref 'VPCSecurityGroups'
+
+Outputs:
+  MySQLDBHost:
+    Description: 'MySQLDB Host Name'
+    Value: !GetAtt MySQLDB.Endpoint.Address
+    Export:
+      Name: !Sub '${ServiceName}-MySQLDBHost'
+  MySQLDBPort:
+    Description: 'MySQLDB Port'
+    Value: !GetAtt MySQLDB.Endpoint.Port
+    Export:
+      Name: !Sub '${ServiceName}-MySQLDBPort'
+  MySQLDBDBName:
+    Description: 'MySQLDB DBName'
+    Value: !Ref DBName
+    Export:
+      Name: !Sub '${ServiceName}-DBName'
+  JDBCConnectionString:
+    Description: JDBC connection string for the database
+    Value: !Join ['', ['jdbc:mysql://', !GetAtt [MySQLDB, Endpoint.Address], ':', !GetAtt [
+          MySQLDB, Endpoint.Port], /, !Ref 'DBName']]
