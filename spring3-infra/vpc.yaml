@@ -12,7 +12,6 @@ Parameters:
   ServiceName:
     Description: 'Service Name'
     Type: String
-    Default: spring3-java
     Description: 'The tagname used to identify the resources created for Spring3Hibernate Java Application'
 
 Resources:

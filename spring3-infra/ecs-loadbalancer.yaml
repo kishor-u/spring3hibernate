@@ -223,7 +223,7 @@ Resources:
       Statistic: Average
       Threshold: '10'
       AlarmDescription: Alarm if ECS Cluster Memory reservation goes below 10
-      Period: '300'
+      Period: '600'
       AlarmActions: [!Ref 'ECSScaleDownPolicyMemory']
       Namespace: AWS/ECS
       Dimensions:

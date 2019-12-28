@@ -26,6 +26,9 @@ Parameters:
     Type: String
     Default: 'master'
     Description: The github branch to monitor for changes.
+  JDBCConnectionString:
+    Type: String
+    Description: RDS Identifier to ECS Containers.
   CPU:
     Type: Number
     Default: 256
@@ -165,10 +168,10 @@ Resources:
             Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ServiceName}-repo-spring3-javapp
           - Name: TAG_NAME
             Value: !Ref ServiceName
-          - Name: JDBCCONNSTRING
-            Value: "jdbc:mysql://optree-dbinstance-spring3hibernate.cna0z6zjemok.us-west-2.rds.amazonaws.com:3306/employee"
           - Name: AWS_ACCOUNT_ID
             Value: !Ref 'AWS::AccountId'
+          - Name: JDBCCONNSTRING
+            Value: !Ref JDBCConnectionString
           - Name: CPU
             Value: !Ref CPU  
           - Name: MEMORY

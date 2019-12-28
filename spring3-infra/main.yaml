@@ -5,12 +5,11 @@ Parameters:
 # ------ Global
   BucketName:
     Type: String
-    Default: spring3hibernate
+    Default: TestBucket
     Description: Name of the bucket where the yaml files exists to build the architecture.
   ServiceName:
-    Description: 'Service Name'
     Type: String
-    Default: spring3-java
+    Default: Opstree
     Description: 'The tagname used to identify the resources created for Spring3Hibernate Java Application'
 
 # ------ Infrastructure    
@@ -28,11 +27,11 @@ Parameters:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the ECS instances.
   AsgDesiredCapacity:
     Type: Number
-    Default: '2'
+    Default: '1'
     Description: Number of instances to launch in your ECS cluster.
   AsgMaxSize:
     Type: Number
-    Default: '6'
+    Default: '3'
     Description: Maximum number of instances that can be launched in your ECS cluster.
   InstanceType:
     Description: EC2 instance type
@@ -58,18 +57,19 @@ Parameters:
     MinLength: '1'
     MaxLength: '64'
     AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
-    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
   MasterUsername:
     Type: String
     Description: MasterUsername
   MasterUserPassword:
     Type: String
+    NoEcho: true
     Description: MasterUserPassword
 
 # ------ CI/CD Pipeline
   GitHubToken:
     Type: String
-    Default: 410abc5df60d303b072b492eb0f7be53faeac4f7
+    Default: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     Description: The Github Token which has access to the repository.
   GitHubUser:
     Type: String
