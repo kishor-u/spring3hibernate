@@ -93,7 +93,6 @@ Resources:
       LaunchConfigurationName: !Ref 'ECSAutoscalingLC'
       MinSize: '1'
       MaxSize: !Ref 'AsgMaxSize'
-
       Tags:
         -
           Key: Name
@@ -157,6 +156,32 @@ Resources:
       Path: /
       Roles: [!Ref 'EC2Role']
 
+# --- EC2 AutoScaling Policies
+  ECSScaleUpPolicyCPU:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName:
+        Ref: ECSAutoScalingGroup
+      Cooldown: '300'
+      ScalingAdjustment: '1'
+
+  ECSCPUScaleUpAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      EvaluationPeriods: '1'
+      Statistic: Average
+      Threshold: '80'
+      AlarmDescription: Alarm if ECS Cluster CPU Utilization goes above 80
+      Period: '300'
+      AlarmActions: [!Ref 'ECSScaleUpPolicyCPU']
+      Namespace: AWS/ECS
+      Dimensions:
+      - Name: ClusterName
+        Value: !Sub ${ServiceName}-cluster-spring3hibernate
+      ComparisonOperator: GreaterThanThreshold
+      MetricName: CPUReservation
+
   ECSScaleUpPolicyMemory:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties:
@@ -182,30 +207,30 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       MetricName: MemoryReservation
 
-  ECSScaleUpPolicyCPU:
+  ECSScaleDownPolicyMemory:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties:
       AdjustmentType: ChangeInCapacity
       AutoScalingGroupName:
         Ref: ECSAutoScalingGroup
       Cooldown: '300'
-      ScalingAdjustment: '1'
+      ScalingAdjustment: '-1'
 
-  ECSCPUScaleUpAlarm:
+  ECSMemoryScaleDownAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
       EvaluationPeriods: '1'
       Statistic: Average
-      Threshold: '80'
-      AlarmDescription: Alarm if ECS Cluster CPU Utilization goes above 80
+      Threshold: '10'
+      AlarmDescription: Alarm if ECS Cluster Memory reservation goes below 10
       Period: '300'
-      AlarmActions: [!Ref 'ECSScaleUpPolicyCPU']
+      AlarmActions: [!Ref 'ECSScaleDownPolicyMemory']
       Namespace: AWS/ECS
       Dimensions:
       - Name: ClusterName
         Value: !Sub ${ServiceName}-cluster-spring3hibernate
-      ComparisonOperator: GreaterThanThreshold
-      MetricName: CPUReservation
+      ComparisonOperator: LessThanThreshold
+      MetricName: MemoryReservation
 
   CloudwatchLogSpring3JavaApp:
     Type: AWS::Logs::LogGroup

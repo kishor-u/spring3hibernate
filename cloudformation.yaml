@@ -113,7 +113,7 @@ Resources:
       Statistic: Average
       Period: 60
       EvaluationPeriods: 1
-      Threshold: 70
+      Threshold: 80
       AlarmActions:
       - !Ref ScaleUpPolicyCPUSpring3Hibernate
 
@@ -146,7 +146,7 @@ Resources:
       Statistic: Average
       Period: 60
       EvaluationPeriods: '1' 
-      Threshold: 70
+      Threshold: 80
       AlarmActions: [!Ref 'ScaleUpPolicyMemorySpring3Hibernate']
 
 Outputs:
