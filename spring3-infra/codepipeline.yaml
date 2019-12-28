@@ -166,7 +166,7 @@ Resources:
           - Name: TAG_NAME
             Value: !Ref ServiceName
           - Name: JDBCCONNSTRING
-            Value: Fn::ImportValue: "TAGNAME-JDBCCONNSTRING"
+            Value: "jdbc:mysql://optree-dbinstance-spring3hibernate.cna0z6zjemok.us-west-2.rds.amazonaws.com:3306/employee"
           - Name: AWS_ACCOUNT_ID
             Value: !Ref 'AWS::AccountId'
           - Name: CPU
