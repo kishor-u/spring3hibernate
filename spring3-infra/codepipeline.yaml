@@ -165,6 +165,8 @@ Resources:
             Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ServiceName}-repo-spring3-javapp
           - Name: TAG_NAME
             Value: !Ref ServiceName
+          - Name: JDBCCONNSTRING
+            Value: Fn::ImportValue: "TAGNAME-JDBCCONNSTRING"
           - Name: AWS_ACCOUNT_ID
             Value: !Ref 'AWS::AccountId'
           - Name: CPU

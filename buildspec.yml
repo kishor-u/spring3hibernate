@@ -11,6 +11,7 @@ phases:
       - echo $REPOSITORY_URI
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - sed -i "s/JDBCCONNSTRING/${JDBCCONNSTRING}/g" src/main/resources/database.properties
   build:
     commands:
       - echo Building the Docker image...
