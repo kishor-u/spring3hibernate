@@ -50,7 +50,7 @@ Mappings: ## Add other ecs optimized AMI ID's if running other than the 4 region
     us-east-2:
         AMIID: ami-0e020d2dbdac03d59
     ap-south-1:
-        AMIID: ami-0ce933e2ae91880d3
+        AMIID: ami-0f724ccabccceb69e
     us-west-2:
         AMIID: ami-0c13873ede4682a27
 Resources:

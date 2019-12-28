@@ -97,6 +97,6 @@ Outputs:
   JDBCConnectionString:
     Description: JDBC connection string for the database
     Value: !Join ['', ['jdbc:mysql://', !GetAtt [MySQLDB, Endpoint.Address], ':', !GetAtt [
-          MySQLDB, Endpoint.Port], /, !Ref 'DBName']]S
+          MySQLDB, Endpoint.Port], /, !Ref 'DBName']]
     Export:
       Name: !Sub '${ServiceName}-JDBCCONNSTRING'
