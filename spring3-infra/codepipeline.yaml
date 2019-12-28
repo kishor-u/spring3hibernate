@@ -1,0 +1,257 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CI/CD CodePipeline Stack for spring3 Java Web Application
+
+Parameters:
+  ServiceName:
+    Type: String 
+    Description: Identification name for pipeline service in the architecture.
+    Default: ops
+  ArtifactBucket:
+    Type: String
+    Default: bucket-ops
+    Description: ArtifactBucket used for storing data for pipeline.
+  GitHubToken:
+    Type: String
+    Default: b6bc6fd25933202978d3ef6780e1dc2813043c11
+    Description: The Github Token which has access to the repository.
+  GitHubUser:
+    Type: String
+    Default : kishorgec
+    Description: The Github User/Organisation under which the repository is hosted. 
+  GitHubRepo:
+    Type: String
+    Default: spring3hibernate
+    Description: Github repo name (e.g. github.com/Org/RepoName then RepoName)
+  GitHubBranch:
+    Type: String
+    Default: 'master'
+    Description: The github branch to monitor for changes.
+  CPU:
+    Type: Number
+    Default: 256
+    Description: CPU Reservation units of a Service.
+  MEMORY:
+    Type: Number
+    Default: 256
+    Description: MEMORY Reservation units of a Service.
+  MINTASK:
+    Type: Number
+    Default: 1
+    Description: Minimum number of tasks.
+  MAXTASK:
+    Type: Number
+    Default: 3
+    Description: Maximum number of tasks.
+
+Resources:
+# Log Group creation for CodeBuild Resource
+  LogGroupCodebuildBuildServicePipeline:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/codebuild/${ServiceName}-codebuild-spring3-javawebapp
+      RetentionInDays: 30
+
+  CodePipelineServiceRoleServiceUpdate:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ServiceName}-codepipeline-spring3-javawebapp
+      Path: /
+      AssumeRolePolicyDocument: |
+        {
+            "Statement": [{
+                "Effect": "Allow",
+                "Principal": { "Service": [ "codepipeline.amazonaws.com" ]},
+                "Action": [ "sts:AssumeRole" ]
+            }]
+        }
+      Policies:
+        - PolicyName: CodepipelineRole
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource:
+                  - !Sub arn:aws:s3:::${ArtifactBucket}/*
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - cloudformation:*
+                  - iam:PassRole
+                  - ec2:CreateSecurityGroup
+
+  CodeBuildServiceRoleServiceUpdate:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ServiceName}-codebuild-spring3-javawebapp
+      Path: /
+      AssumeRolePolicyDocument: |
+        {
+            "Statement": [{
+                "Effect": "Allow",
+                "Principal": { "Service": [ "codebuild.amazonaws.com" ]},
+                "Action": [ "sts:AssumeRole" ]
+            }]
+        }
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - ecr:GetAuthorizationToken
+              - Resource: !Sub arn:aws:s3:::*
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:GetObjectVersion
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - ecr:*
+
+  CloudformationExecutionRoleServiceUpdate:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ServiceName}-cloudformation-spring3-javawebapp
+      Path: /
+      AssumeRolePolicyDocument: |
+        {
+            "Statement": [{
+                "Effect": "Allow",
+                "Principal": { "Service": [ "cloudformation.amazonaws.com" ]},
+                "Action": [ "sts:AssumeRole" ]
+            }]
+        }
+      Policies:
+        - PolicyName: CloudFormationRole
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action: "*"
+
+  CodeBuildProjectBuildStageServiceUpdate:
+    Type: AWS::CodeBuild::Project
+    DependsOn: CodeBuildServiceRoleServiceUpdate
+    Properties:
+      Name: !Sub ${ServiceName}-codebuild-spring3-javawebapp
+      Artifacts:
+        Location: !Ref ArtifactBucket
+        Type: "S3"
+      Source:
+        Location: !Sub ${ArtifactBucket}/source.zip
+        Type: "S3"
+      Environment:
+        ComputeType: "BUILD_GENERAL1_SMALL"
+        Image: "aws/codebuild/docker:18"
+        Type: "LINUX_CONTAINER"
+        EnvironmentVariables:
+          - Name: ECR_REPO
+            Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ServiceName}-repo-spring3-javapp
+          - Name: TAG_NAME
+            Value: !Ref ServiceName
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref 'AWS::AccountId'
+          - Name: CPU
+            Value: !Ref CPU  
+          - Name: MEMORY
+            Value: !Ref MEMORY
+          - Name: MIN_TASK
+            Value: !Ref MINTASK
+          - Name: MAX_TASK
+            Value: !Ref MAXTASK
+      Tags:
+      - Key: Name
+        Value: !Sub '${ServiceName}-buildstage-servicepipeline'
+      - Key: Service
+        Value: !Sub '${ServiceName}'
+      ServiceRole: !GetAtt CodeBuildServiceRoleServiceUpdate.Arn
+
+
+  ServiceUpdatePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    DependsOn: CodePipelineServiceRoleServiceUpdate
+    Properties:
+      Name: !Sub ${ServiceName}-codepipeline-spring3-javawebapp
+      RoleArn: !GetAtt CodePipelineServiceRoleServiceUpdate.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: App
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: 1
+                Provider: GitHub
+              Configuration:
+                Owner: !Ref GitHubUser
+                Repo: !Ref GitHubRepo
+                Branch: !Ref GitHubBranch
+                OAuthToken: !Ref GitHubToken
+              OutputArtifacts:
+                - Name: App
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref CodeBuildProjectBuildStageServiceUpdate
+              InputArtifacts:
+                - Name: App
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 2
+        - Name: ManualApproval
+          Actions:
+            - Name: Approval
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Version: 1
+                Provider: Manual
+              Configuration:
+                CustomData: "Manual Approval Stage"
+              RunOrder: 3
+        - Name: Deploy
+          Actions:
+          - Name: DeployPipelineAction
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Provider: CloudFormation
+              Version: 1
+            Configuration:
+              ActionMode: CREATE_UPDATE
+              Capabilities: CAPABILITY_IAM
+              StackName: !Sub ${ServiceName}-spring3-webapp-stack
+              RoleArn: !GetAtt CloudformationExecutionRoleServiceUpdate.Arn
+              TemplatePath: 'BuildOutput::cloudformation.yaml'
+            InputArtifacts:
+            - Name: BuildOutput
+            RunOrder: 4
+
+Outputs:
+  ServiceUpdatePipeline:
+    Value: !Sub https://console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/${ServiceUpdatePipeline}
