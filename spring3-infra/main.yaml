@@ -1,0 +1,207 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description:
+  Main template for the Java Spring3Hibernate Application
+Parameters:
+# ------ Global
+  BucketName:
+    Type: String
+    Default: spring3hibernate
+    Description: Name of the bucket where the yaml files exists to build the architecture.
+  ServiceName:
+    Description: 'Service Name'
+    Type: String
+    Default: spring3-java
+    Description: 'The tagname used to identify the resources created for Spring3Hibernate Java Application'
+
+# ------ Infrastructure    
+  ServiceID:
+    Description: 'CIDR Block notation for VPC (Class B type) (10.XXX.0.0/16)'
+    Type: Number
+    Default: 0
+    ConstraintDescription: 'Must be in the range [0-255]'
+    MinValue: 0
+    MaxValue: 255
+
+# ------ ECSLoadbalancer 
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the ECS instances.
+  AsgDesiredCapacity:
+    Type: Number
+    Default: '2'
+    Description: Number of instances to launch in your ECS cluster.
+  AsgMaxSize:
+    Type: Number
+    Default: '6'
+    Description: Maximum number of instances that can be launched in your ECS cluster.
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues: [t2.nano, t2.micro, t2.small, t2.medium, t2.large, t2.xlarge, t2.2xlarge, m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge, m4.10xlarge, m4.16xlarge, m3.medium, m3.large, m3.xlarge, m3.2xlarge, c4.large, c4.xlarge, c4.2xlarge, c4.4xlarge, c4.8xlarge, c3.large, c3.xlarge, c3.2xlarge, c3.4xlarge, c3.8xlarge, r3.large, r3.xlarge, r3.2xlarge, r3.4xlarge, r3.8xlarge, r4.large, r4.xlarge, r4.2xlarge, r4.4xlarge, r4.8xlarge, r4.16xlarge, x1.16xlarge, x1.32xlarge]
+    ConstraintDescription: Please choose a valid instance type.
+
+# ------ MySQL RDS Instance
+  AllocatedStorage:
+    Type: String
+    Default: '20'
+    Description: The allocated storage size, specified in gigabytes (GB).
+  DBInstanceClass:
+    Type: String
+    Default: db.t2.micro
+    AllowedValues: [db.m4.large, db.m4.xlarge, db.m4.2xlarge, db.m4.4xlarge, db.m4.10xlarge, db.r3.large, db.r3.xlarge, db.r3.2xlarge, db.r3.4xlarge, db.r3.8xlarge, db.t2.micro, db.t2.small, db.t2.medium, db.t2.large]
+    Description: The name of the compute and memory capacity classes of the DB instance.
+  DBName:
+    Default: employee
+    Description: The database name
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  MasterUsername:
+    Type: String
+    Description: MasterUsername
+  MasterUserPassword:
+    Type: String
+    Description: MasterUserPassword
+
+# ------ CI/CD Pipeline
+  GitHubToken:
+    Type: String
+    Default: 410abc5df60d303b072b492eb0f7be53faeac4f7
+    Description: The Github Token which has access to the repository.
+  GitHubUser:
+    Type: String
+    Default : kishorgec
+    Description: The Github User/Organisation under which the repository is hosted. 
+  GitHubRepo:
+    Type: String
+    Description: Github repo name (e.g. github.com/Org/RepoName then RepoName)
+  GitHubBranch:
+    Type: String
+    Description: The github branch to monitor for changes.
+  CPU:
+    Type: Number
+    Default: 256
+    Description: CPU Reservation units of a Service.
+  MEMORY:
+    Type: Number
+    Default: 256
+    Description: MEMORY Reservation units of a Service.
+  MINTASK:
+    Type: Number
+    Default: 1
+    Description: Minimum number of tasks.
+  MAXTASK:
+    Type: Number
+    Default: 3
+    Description: Maximum number of tasks.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Global Parameters"
+        Parameters:
+          - BucketName
+          - ServiceName
+      -
+        Label:
+          default: "Infrastructure Configuration"
+        Parameters:
+          - ServiceID
+      -
+        Label:
+          default: "ECSLoadbalancer Configuration"
+        Parameters:
+          - KeyName
+          - AsgDesiredCapacity
+          - AsgMaxSize
+          - InstanceType
+      -
+        Label:
+          default: "RDS Configuration"
+        Parameters:
+          - AllocatedStorage
+          - DBInstanceClass
+          - DBName
+          - MasterUsername
+          - MasterUserPassword
+      -
+        Label:
+          default: "Codepipeline Configuration"
+        Parameters:
+          - GitHubToken
+          - GitHubUser
+          - GitHubRepo
+          - GitHubBranch
+          - CPU
+          - MEMORY
+          - MINTASK
+          - MAXTASK
+
+Resources:
+  Infrastructure:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${BucketName}/vpc.yaml
+      Parameters:
+        ServiceID: !Ref 'ServiceID'
+        ServiceName: !Ref ServiceName
+
+  RDS:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: Infrastructure
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${BucketName}/rds.yaml
+      Parameters:
+        ServiceName: !Ref ServiceName
+        AllocatedStorage: !Ref AllocatedStorage
+        DBInstanceClass: !Ref DBInstanceClass
+        DBName: !Ref DBName
+        MasterUsername: !Ref MasterUsername
+        MasterUserPassword: !Ref MasterUserPassword
+        PrivateSubnetAZ1: !GetAtt Infrastructure.Outputs.SubnetAPrivate
+        PrivateSubnetAZ2: !GetAtt Infrastructure.Outputs.SubnetBPrivate
+        VPCSecurityGroups: !GetAtt Infrastructure.Outputs.PrivateSecurityGroup
+
+  ECSLoadbalancerStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: 
+      - Infrastructure
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${BucketName}/ecs-loadbalancer.yaml
+      Parameters:
+        KeyName: !Ref 'KeyName'
+        ServiceName: !Ref ServiceName
+        AsgDesiredCapacity: !Ref 'AsgDesiredCapacity'
+        AsgMaxSize: !Ref 'AsgMaxSize'
+        InstanceType: !Ref 'InstanceType'
+        PrivateSubnetAZ1: !GetAtt Infrastructure.Outputs.SubnetAPrivate
+        PrivateSubnetAZ2: !GetAtt Infrastructure.Outputs.SubnetBPrivate
+        ECSSecurityGroup: !GetAtt Infrastructure.Outputs.PrivateSecurityGroup
+        PublicSubnetAZ1: !GetAtt Infrastructure.Outputs.SubnetAPublic
+        PublicSubnetAZ2: !GetAtt Infrastructure.Outputs.SubnetBPublic
+        LoadbalancerSecurityGroup: !GetAtt Infrastructure.Outputs.PublicSecurityGroup
+        VpcId: !GetAtt Infrastructure.Outputs.VPC
+
+  CodePipeline:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - RDS
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${BucketName}/pipeline.yaml
+      Parameters:
+        ServiceName: !Ref ServiceName
+        ArtifactBucket: !Ref BucketName
+        GitHubRepo: !Ref GitHubRepo
+        GitHubBranch: !Ref GitHubBranch
+        GitHubToken: !Ref GitHubToken
+        GitHubUser: !Ref GitHubUser
+        JDBCConnectionString: !GetAtt RDS.Outputs.JDBCConnectionString
+        CPU: !Ref CPU
+        MEMORY: !Ref MEMORY
+        MINTASK: !Ref MINTASK
+        MAXTASK: !Ref MAXTASK
