@@ -12,7 +12,7 @@ Parameters:
     Description: ArtifactBucket used for storing data for pipeline.
   GitHubToken:
     Type: String
-    Default: b6bc6fd25933202978d3ef6780e1dc2813043c11
+    Default: b6bc6fd25933202978d3ef6780e1dc2813043c
     Description: The Github Token which has access to the repository.
   GitHubUser:
     Type: String
