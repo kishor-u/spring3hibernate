@@ -16,7 +16,6 @@ Parameters:
     Description: The Github Token which has access to the repository.
   GitHubUser:
     Type: String
-    Default : kishorgec
     Description: The Github User/Organisation under which the repository is hosted. 
   GitHubRepo:
     Type: String
@@ -24,7 +23,7 @@ Parameters:
     Description: Github repo name (e.g. github.com/Org/RepoName then RepoName)
   GitHubBranch:
     Type: String
-    Default: 'master'
+    Default: master
     Description: The github branch to monitor for changes.
   JDBCConnectionString:
     Type: String

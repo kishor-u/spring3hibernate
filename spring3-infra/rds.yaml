@@ -64,7 +64,7 @@ Resources:
       DBName: !Ref 'DBName'
       DBSubnetGroupName: !Ref 'DBSubnetGrp'
       Engine: MySQL
-      EngineVersion: "5.6.19"
+      EngineVersion: "5.6.34"
       MasterUsername: !Ref 'MasterUsername'
       MasterUserPassword: !Ref 'MasterUserPassword'
       MultiAZ: false

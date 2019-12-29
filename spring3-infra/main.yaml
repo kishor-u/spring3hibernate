@@ -9,7 +9,7 @@ Parameters:
     Description: Name of the bucket where the yaml files exists to build the architecture.
   ServiceName:
     Type: String
-    Default: Opstree
+    Default: opstree
     Description: 'The tagname used to identify the resources created for Spring3Hibernate Java Application'
 
 # ------ Infrastructure    
@@ -69,11 +69,10 @@ Parameters:
 # ------ CI/CD Pipeline
   GitHubToken:
     Type: String
-    Default: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    Default: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     Description: The Github Token which has access to the repository.
   GitHubUser:
     Type: String
-    Default : kishorgec
     Description: The Github User/Organisation under which the repository is hosted. 
   GitHubRepo:
     Type: String
