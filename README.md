@@ -1,64 +1,19 @@
-# Spring3Hibernate - A OpsTree Sample Maven based Java Application
+### Spring3Hibernate - IaC
 
-The main goal of this awesome Java Webapp is to encourage people to dive deep in Java Application Architecture and how we can make delivery pipeline faster, easier and much reliable using **Continous Integration**.
+This folder contains the nested cloudformation templates for the creation of CI/CD deployment pipeline for the java [application](https://github.com/opstree/spring3hibernate).
 
-## Dependencies
+#### Steps :
 
-The list of dependencies are not quite long but yes we do have some dependencies.
+* Clone the repo and paste the contents of /spring3-infra folder to a S3 Bucket.
 
-- [X] **Maven 3.X**
-- [X] **Java 8**
-- [X] **MySQL**
-- [X] **Docker**(Only if you are willing to create a Dockerized Setup)
+* Create the stack using AWS Cloudformation using the index file : main.yaml
 
-## Needs to be Taken Care
-This application connects with MySQL database. If you want to have a full-fledged running application, just do me a favor and edit these properties according to your database environment.
+* Give a sample stack name and a service name for the stack. Remeber every resources made using this stack will have a tag name which we are giving as the ServiceName.
 
-```properties
-database.driver=com.mysql.jdbc.Driver
-database.url=jdbc:mysql://mysql.okts-test:3306/employeedb
-database.user=root
-database.password=password
-hibernate.dialect=org.hibernate.dialect.MySQLDialect
-hibernate.show_sql=true
-hibernate.hbm2ddl.auto=update
-upload.dir=c:/uploads
-```
+* Provide other asked parameters required for the project.
 
-**Note:- The location of file is [src/main/resources/database.properties](src/main/resources/database.properties)**
+* Please make sure every resources has been created once every stacks shows the CREATE-COMPLETE status.
 
-## How to Run
+* Approve the Manual Approval stage of the Code Pipeline.
 
-#### Manual Setup
-
-Running this application manually is pretty straight forward.
-
-**For Compilation**
-
-```shell
-mvn clean package
-```
-
-**For Unit Tests**
-
-```shell
-mvn test
-```
-
-**For Deploying Artifact on Remote Repository**
-
-```shell
-mvn deploy
-```
-
-There is some other cool stuff as well but I leave that up to you to explore it.
-
-#### Dockerized Setup
-
-Dockerized setup is much classier than manual setup. To achieve this you just have to do this:-
-
-```shell
-docker build -t opstree/spring3hibernate:latest -f Dockerfile .
-```
-
-That's it. It will create Tomcat Image having the war itself. Now just go and deploy the docker image anywhere you want.
+* Hit the DNSName output of Loadbalancer stack and verify the application is now live.
